@@ -1,0 +1,217 @@
+---
+title: "Praktikum Week 1"
+author: "Pengantar R Studio Cloud & Regresi logistik"
+output:
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr :: opts_chunk$set(echo = TRUE)
+```
+
+Pada modul kali ini kita akan belajar membuat model regresi kualitatif menggunakan R. Kita akan membentuk model regresi dengan variabel dependen berupa bilangan biner. Misalnya, memprediksi seorang konsumen akan melakukan proses pembelian atau tidak berdasarkan total spending, minat belanja dan kelas ekonomi.
+
+Pembahasan yang akan di bahas pada modul ini yaitu:
+
+1. Model Logit
+
+## Install Packages
+
+Package yang dibutuhkan yaitu:
+1. readxl (untuk membaca file Excel)
+2. GGally (untuk menampilkan plot korelasi)
+3. dplyr (untuk menyatukan tabel)
+
+Cek packages yang sudah diinstal melalui menu packages. Jika belum terdaftar maka package belum diinstal. Silahkan install packages jika package yang digunakan belum diinstal dengan perintah install.packages("nama_package")
+
+```{r}
+install.packages("readxl")
+install.packages("GGally")
+install.packages("dplyr")
+```
+
+## Aktifkan Packages
+
+Setelah package diinstal, kita harus mengaktifkan package tersebut agar dapat digunakan. Silahkan aktifkan seluruh package yang dibutuhkan menggunakan perintah library(nama_package)
+
+```{r}
+library(readxl)
+library(GGally)
+library(dplyr)
+```
+
+## Mengimpor Data
+
+Impor data Excel yang akan dianalisis dan simpan dengan nama "data_pambelian".
+
+```{r}
+data_pembelian <- read_xlsx("data_pembelian.xlsx")
+```
+
+Tampilkan data yang telah diimpor.
+
+```{r}
+print(data_pembelian)
+```
+
+Data ini merupakan data status beli dari setiap pembelian konsumen. Berikut merupakan definisi masing - masing variabel
+
+Variabel independen (X)
+- total_spending yaitu jumlah uang yang dikeluarkan oleh konsumen untuk melakukan pembelian 
+- minat_belanja yaitu faktor yang menentukan minat konsumen untuk belanja 
+- kelas_ekonomi yaitu status kelas ekonomi dari setiap konsumen dari bernilai 1 sampai dengan 4 (kategorik) dimana masing-masing kategori mengindikasikan 
+  kelas ekonomi = 1 mengindikasikan kelas ekonomi sangat mampu
+  kelas ekonomi = 2 mengindikasikan kelas ekonomi cukup mampu
+  kelas ekonomi = 3 mengindikasikan kelas ekonomi kurang mampu
+  kelas ekonomi = 4 mengindikasikan kelas ekonomi tidak mampu
+
+Variabel dependen (Y)
+- status_beli yaitu variabel biner berupa status atau keadaan seorang konsumen membeli / tidak membeli pada saat belanja; bernilai 1 jika konsumen membeli dan bernilai (0) jika konsumen tidak membeli
+
+Model regresi kualitatif ini ditujukan untuk memprediksi keputusan pembelian pada kegiatan belanja. 
+
+
+## Eksplorasi Data
+
+
+### Melihat Ringkasan Data
+
+Melihat ringkasan profil data yang akan diolah dengan perintah summary(nama_data)
+
+```{r}
+summary(data_pembelian)
+```
+
+### Membentuk Histogram Sebaran Data
+
+Telusuri sebaran data dari variabel tertentu.
+perintah hist(nama_data$variabel, xlab="nama_sumbu_x", main="judul_tabel", col="warna")
+
+```{r}
+hist(data_pembelian$minat_belanja, xlab="faktor minat belanja", main="Sebaran minat belanja konsumen", col="red")
+```
+
+## Model Logit
+
+### Membuat Model logit
+
+Model logit dapat dibentuk dengan menggunakan perintah glm(Y ~ X1 + X2 + X3, family=binomial(link="logit"), data=nama_data).
+Simpan model probit ini dengan nama "logit"
+
+```{r}
+logit <- glm(status_beli ~ total_spending + minat_belanja + factor(kelas_ekonomi), 
+                  family=binomial(link="logit"), 
+                  data=data_pembelian)
+```
+
+Tampilkan ringkasan model dengan perintah summary(nama_model)
+
+```{r}
+summary(logit)
+```
+
+#### Akurasi Model - Confusion Matrix
+
+Confusion Matrix merupakan tabel dengan 4 kombinasi berbeda dari nilai prediksi dan nilai aktual.
+
+Artinya, kita akan membandingkan nilai prediksi dan nilai aktual. 
+Tabel nilai aktual telah kita miliki pada data_pembelian.
+Selanjutnya kita dapat melakukan prediksi nilai Y berdasarkan model logit yang telah dibuat dengan perintah data.frame(nama_kolom_prediksi = as.numeric(predict(nama_model, nama_data, "response")>0.5)). Simpan hasil prediksi dengan nama prediksi_logit.
+
+```{r}
+prediksi_logit <- data.frame(statusbeli_pred = as.numeric(predict(logit, data_pembelian, "response")>0.5))
+```
+
+Tampilkan data prediksi dengan menggunakan perintah print(nama_data_prediksi)
+
+```{r}
+print(prediksi_logit)
+head(prediksi_logit,5)
+```
+
+untuk melihat objek baru (tabel baru) hasil nambah kolom prediksi_logit ke dataset data_pembelian
+
+```{r}
+hasil_logit <- bind_cols(prediksi_logit, data_pembelian)
+hasil_logit
+```
+pada data pertama, seorang konsumen dengan total spending sebesar 380, minat belanja sebesar 3.61, dan berasal dari kelas ekonomi yang kurang mampu diprediksi tidak akan membeli, kenyataannya memang tidak akan membeli. Namun perhatikan baris kedua. konsumen tersebut diprediksi tidak akan membeli, padahal kenyataannya membeli. dan seterusnya. Inilah yang dinamakan salah prediksi.
+
+Untuk mengetahui kualitas suatu model, kita dapat membandingkan persentase benar prediksi dari model ini. Salah satu pendekatan sederhana untuk melakukannya yaitu dengan menggunakan confusion matrix.
+
+Confusion Matrix dapat dibentuk dengan perintah table(nama_tabel_hasil$nama_kolom_prediksi, nama_tabel_hasil$nama_kolom_aktual).
+Simpan confusion matix dengan nama "cm_logit"
+
+```{r}
+cm_logit <- table(hasil_logit$statusbeli_pred, hasil_logit$status_beli)
+```
+
+Tampilkan confusion matrix dengan perintah print(nama_confusion_matrix)
+
+```{r}
+print(cm_logit)
+```
+
+Angka 0 dan 1 pada sisi atas menunjukkan Y aktual
+Angka 0 dan 1 pada sisi kiri menunjukkan Y prediksi
+
+Silahkan simpan masing - masing data tersebut dengan perintah nama_confusion_matrix[baris,kolom].
+
+Simpan dan tampilkan nilai True Positive dengan nama "TP_Logit"
+
+```{r}
+TP_logit <- cm_logit[1, 1] 
+TP_logit
+```
+
+Simpan nilai False Positive dengan nama "FP_logit"
+
+```{r}
+FP_logit <- cm_logit[2, 1]
+FP_logit
+```
+
+Simpan nilai False Negative dengan nama "FN_logit"
+
+```{r}
+FN_logit <- cm_logit[1, 2]
+FN_logit
+```
+
+Simpan nilai True Negative dengan nama "TN_logit"
+
+```{r}
+TN_logit <- cm_logit[2, 2]
+TN_logit
+```
+
+Hitung nilai akurasi dengan rumus jumlah konsumen yang benar diprediksi (TRUE) / jumlah seluruh konsumen baik yang benar diprediksi (TRUE) maupun yang salah diprediksi (FALSE).
+Simpan dengan nama "accuracy_probit" dan tampilkan nilainya.
+
+```{r}
+# Accuracy
+accuracy_logit <- (TP_logit + TN_logit) / (TP_logit + FP_logit + FN_logit + TN_logit)
+accuracy_logit
+```
+
+Kesimpulan :
+- Model logit berhasil benar memprediksi status beli yang dilakukan oleh konsumen berdasarkan total spending, minat belanja dan kelas ekonomi dengan tingkat akurasi sebesar 71%. 
+
+- konsumen Asya memiliki total spending scores sebesar 750, minat belanja sebesar 3.7, dan berasal dari kelas ekonomi yang kurang mampu (kelas ekonomi = 3).
+
+- konsumen Barda memiliki total spending scores sebesar 600, minat belanja sebesar 3.3, dan berasal dari kelas ekonomi yang sangat mampu (kelas ekonomi = 1).
+
+```{r}
+data_baru <- data.frame(nama_konsumen=c("Asya", "Barda"), total_spending=c(750, 600), minat_belanja=c(3.7, 3.3), kelas_ekonomi=c(3,1))
+data_baru
+```
+
+Kita akan memprediksi apakah konsumen Asya dan Barda akan membeli produk sesuai kemampuan kelas ekonomi yang mereka miliki
+
+```{r}
+predict_logit <- data.frame(statusbeli_pred_logit = as.numeric(predict(logit, data_baru, "response")>0.5))
+predict_logit
+```
+
+
+
